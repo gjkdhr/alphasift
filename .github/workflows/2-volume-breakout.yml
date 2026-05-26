@@ -1,0 +1,87 @@
+name: 放量突破选股
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '40 6 * * 1-5'
+
+concurrency:
+  group: alphasift-volume-breakout
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - name: 同步上游代码
+        run: |
+          gh repo sync ${{ github.repository }} --source ZhuLinsen/alphasift
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: 执行选股 - 放量突破
+        id: screen
+        run: |
+          alphasift screen volume_breakout --no-llm 2>/tmp/alphasift_err.log | tee /tmp/result.json
+
+      - name: 格式化结果摘要
+        if: success()
+        id: summary
+        run: |
+          echo "SUMMARY<<EOF" >> $GITHUB_ENV
+          echo "=== 放量突破选股结果 ===" >> $GITHUB_ENV
+          python3 -c "
+import json
+with open('/tmp/result.json') as f:
+    data = json.load(f)
+picks = data.get('picks', data) if isinstance(data, dict) else data
+if isinstance(picks, list):
+    lines = ['共筛选出 ' + str(len(picks)) + ' 只候选股', '']
+    for p in picks[:10]:
+        code = p.get('code','?')
+        name = p.get('name','?')
+        score = p.get('final_score', p.get('score', 0))
+        price = p.get('price', 0)
+        chg = p.get('change_pct', 0)
+        vol = p.get('volume_ratio', 0)
+        lines.append(f'{code} {name} 评分:{score:.1f} 涨幅:{chg:+.1f}% 量比:{vol:.1f}')
+    print('\\n'.join(lines))
+" 2>/dev/null >> $GITHUB_ENV || echo '选股完成，结果查看 artifacts' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: 推送到 Telegram
+        if: success()
+        run: |
+          RESULT="${{ env.SUMMARY }}"
+          TIMESTAMP=$(TZ='Asia/Shanghai' date '+%m-%d %H:%M')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            --data-urlencode "text=<b>📊 放量突破 $TIMESTAMP</b>
+
+$RESULT"
+
+      - name: 上传完整结果
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: alphasift-volume-breakout-${{ github.run_number }}
+          path: /tmp/result.json
+          retention-days: 7
