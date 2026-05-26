@@ -13,4 +13,4 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - run: pip install -e .
-      - run: echo "ready"
+      - run: TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }} alphasift screen capital_heat --no-llm 2>/tmp/err.log | tee /tmp/result.json
