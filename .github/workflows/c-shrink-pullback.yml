@@ -1,0 +1,26 @@
+name: 缩量回踩
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '40 6 * * 1-5'
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 安装
+        run: |
+          pip install -e .
+
+      - name: 缩量回踩
+        run: alphasift screen shrink_pullback --no-llm
