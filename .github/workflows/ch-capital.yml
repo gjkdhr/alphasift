@@ -1,7 +1,16 @@
 name: 资金热度选股
 on: workflow_dispatch
 jobs:
-  run:
+  screen:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
-      - run: echo "hello capital heat"
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -e .
+      - run: echo "ready"
