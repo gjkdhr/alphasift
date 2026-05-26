@@ -1,0 +1,53 @@
+name: 资金热度选股
+on: workflow_dispatch
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - name: 同步上游代码
+        run: gh repo sync ${{ github.repository }} --source ZhuLinsen/alphasift
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -e .
+      - run: TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }} alphasift screen capital_heat --no-llm 2>/tmp/err.log | tee /tmp/result.json
+      - name: 推送到 Telegram
+        run: |
+          TIMESTAMP=$(TZ='Asia/Shanghai' date '+%m-%d %H:%M')
+          python3 -c "
+import json
+with open('/tmp/result.json') as f:
+    data = json.load(f)
+picks = data.get('picks', data) if isinstance(data, dict) else data
+if isinstance(picks, list):
+    print('共筛选出 ' + str(len(picks)) + ' 只候选股')
+    print()
+    for p in picks[:10]:
+        code = p.get('code','?')
+        name = p.get('name','?')
+        score = p.get('final_score', p.get('score', 0))
+        chg = p.get('change_pct', 0)
+        print(f'{code} {name} 评分:{score:.1f} 涨幅:{chg:+.1f}%')
+else:
+    print('选股完成，结果在 artifacts 中')
+" > /tmp/tg_result.txt
+          MSG="<b>资金热度选股 $(TZ='Asia/Shanghai' date '+%m-%d %H:%M')</b>
+$(cat /tmp/tg_result.txt)"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            --data-urlencode "text=$MSG"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: capital_heat-result
+          path: /tmp/result.json
+          retention-days: 7
