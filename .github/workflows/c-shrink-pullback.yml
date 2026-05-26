@@ -10,6 +10,8 @@ jobs:
   screen:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
