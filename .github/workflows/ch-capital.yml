@@ -17,7 +17,9 @@ jobs:
       - name: 推送到 Telegram
         run: |
           TIMESTAMP=$(TZ='Asia/Shanghai' date '+%m-%d %H:%M')
-          MSG="<b>资金热度选股 $TIMESTAMP</b>"
+          python3 -c 'import json; d = json.load(open("/tmp/result.json")); print(len(d.get("picks", d) if isinstance(d, dict) else [1,2]))' > /tmp/count.txt
+          MSG="<b>资金热度选股 $TIMESTAMP</b>
+选股完成，共 $(cat /tmp/count.txt) 只候选股"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d "parse_mode=HTML" \
