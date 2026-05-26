@@ -1,9 +1,9 @@
 name: 资金热度选股
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: '35 6 * * 1-5'
+  workflow_dispatch:
 
 concurrency:
   group: alphasift-capital-heat
