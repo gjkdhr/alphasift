@@ -1,7 +1,7 @@
 name: 放量突破选股
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
     - cron: '40 6 * * 1-5'
 
@@ -39,7 +39,7 @@ jobs:
       - name: 执行选股 - 放量突破
         id: screen
         run: |
-          alphasift screen volume_breakout --no-llm 2>/tmp/alphasift_err.log | tee /tmp/result.json
+          TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }} alphasift screen volume_breakout --no-llm 2>/tmp/alphasift_err.log | tee /tmp/result.json
 
       - name: 格式化结果摘要
         if: success()
