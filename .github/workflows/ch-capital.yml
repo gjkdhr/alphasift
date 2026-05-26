@@ -4,8 +4,6 @@ jobs:
   screen:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -21,13 +19,9 @@ jobs:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: >
-          TIMESTAMP=$(TZ='Asia/Shanghai' date '+%m-%d %H:%M')
+          export TIMESTAMP=$(TZ='Asia/Shanghai' date '+%m-%d %H:%M')
           &&
-          python3 -c "import json,os; d=json.load(open('/tmp/result.json')); picks=d.get('picks',d) if isinstance(d,dict) else d;
-          lines=['共筛选出 '+str(len(picks))+' 只候选股',''];
-          [lines.append(f\\"{p.get('code','?')} {p.get('name','?')} 评分:{p.get('final_score',p.get('score',0)):.1f} 涨幅:{p.get('change_pct',0):+.1f}%\\") for p in (picks[:10] if isinstance(picks,list) else [])];
-          msg='<b>资金热度选股 '+os.environ['TIMESTAMP']+'</b>\n\n'+'\n'.join(lines);
-          open('/tmp/tg_msg.txt','w').write(msg)" 2>&1
+          python3 scripts/format_capital.py
           &&
           curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" -d "chat_id=$TG_CHAT" -d "parse_mode=HTML" --data-urlencode "text@/tmp/tg_msg.txt"
       - uses: actions/upload-artifact@v6
