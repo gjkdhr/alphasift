@@ -1,7 +1,7 @@
 name: 缩量回踩选股
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
     - cron: '30 6 * * 1-5'
 
@@ -39,7 +39,7 @@ jobs:
       - name: 执行选股 - 缩量回踩
         id: screen
         run: |
-          alphasift screen shrink_pullback --no-llm 2>/tmp/alphasift_err.log | tee /tmp/result.json
+          TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }} alphasift screen shrink_pullback --no-llm 2>/tmp/alphasift_err.log | tee /tmp/result.json
 
       - name: 格式化结果摘要
         if: success()
