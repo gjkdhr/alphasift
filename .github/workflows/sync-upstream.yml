@@ -1,0 +1,34 @@
+name: 同步上游仓库
+
+on:
+  schedule:
+    # 每天 UTC 22:07（北京时间 06:07），低频异步，避免与其他 Action 撞车
+    - cron: '7 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 同步上游
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git remote add upstream https://github.com/ZhuLinsen/alphasift.git 2>/dev/null || true
+          git fetch upstream main
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "✅ 已是最新，无需同步"
+          else
+            echo "🔄 检测到上游更新，正在合并..."
+            if git merge upstream/main -m "🤖 Auto-sync with upstream"; then
+              echo "✅ 同步成功，推送回 fork..."
+              git push origin main
+            else
+              echo "⚠️ 合并冲突，放弃本次同步"
+              git merge --abort
+            fi
+          fi
